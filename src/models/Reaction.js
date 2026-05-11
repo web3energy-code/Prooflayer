@@ -1,13 +1,15 @@
-const router = require('express').Router();
-const { toggleLike, addComment, getReactions, getBulkReactions } = require('../controllers/reactionController');
-const { protect } = require('../middleware/auth');
+const mongoose = require('mongoose');
 
-// Public — read reactions
-router.get('/:contributionId', getReactions);
+// Stores likes AND comments for contributions
+const ReactionSchema = new mongoose.Schema({
+  contributionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Contribution', required: true, index: true },
+  wallet: { type: String, required: true }, // who did it
+  username: { type: String, default: '' },
+  type: { type: String, enum: ['like', 'comment'], required: true },
+  text: { type: String, maxlength: 500, trim: true }, // only for comments
+}, { timestamps: true });
 
-// Protected — write reactions
-router.post('/like/:contributionId', protect, toggleLike);
-router.post('/comment/:contributionId', protect, addComment);
-router.post('/bulk', protect, getBulkReactions);
+// One like per wallet per contribution
+ReactionSchema.index({ contributionId: 1, wallet: 1, type: 1 }, { unique: false });
 
-module.exports = router;
+module.exports = mongoose.model('Reaction', ReactionSchema);
