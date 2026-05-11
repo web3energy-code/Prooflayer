@@ -21,19 +21,28 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false }));
 
+// Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'ProofLayer API', time: new Date().toISOString() }));
-app.get('/api', (req, res) => res.json({ message: 'ProofLayer API v1.0', endpoints: ['/api/auth', '/api/users', '/api/contributions', '/api/leaderboard'] }));
+app.get('/api', (req, res) => res.json({ message: 'ProofLayer API v1.0' }));
 
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/users', require('./routes/users'));
+// Routes
+app.use('/api/auth',          require('./routes/auth'));
+app.use('/api/users',         require('./routes/users'));
 app.use('/api/contributions', require('./routes/contributions'));
-app.use('/api/leaderboard', require('./routes/leaderboard'));
+app.use('/api/leaderboard',   require('./routes/leaderboard'));
+app.use('/api/messages',      require('./routes/messages'));
+app.use('/api/reactions',     require('./routes/reactions'));
 
+// 404
 app.use((req, res) => res.status(404).json({ success: false, message: 'Route not found' }));
+
+// Error handler
 app.use((err, req, res, next) => {
-  console.error(err);
+  if (err.code === 11000) {
+    return res.status(409).json({ success: false, message: 'Duplicate entry' });
+  }
   res.status(err.statusCode || 500).json({ success: false, message: err.message || 'Server error' });
 });
 
